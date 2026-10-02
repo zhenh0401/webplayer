@@ -1,235 +1,264 @@
-* { box-sizing: border-box; }
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>webplayer</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
 
-html, body {
-  margin: 0;
-  padding: 0;
-  min-height: 100vh;
-  font-family: "Segoe UI", Tahoma, sans-serif;
-  color: #1a1a1a;
-  overflow-x: hidden;
-}
+  <div class="wallpaper"></div>
 
-/* Frutiger Aero wallpaper */
-.wallpaper {
-  position: fixed;
-  inset: 0;
-  z-index: -1;
-  background:
-    radial-gradient(circle at 20% 20%, rgba(255,255,255,0.55), transparent 40%),
-    radial-gradient(circle at 80% 70%, rgba(120,220,255,0.55), transparent 45%),
-    linear-gradient(180deg, #78c8f0 0%, #4aa8e0 40%, #6fbf4f 100%);
-}
-.wallpaper::after {
-  content: "";
-  position: absolute;
-  inset: 0;
-  background-image:
-    radial-gradient(circle at 30% 80%, rgba(255,255,255,0.35) 0, transparent 12%),
-    radial-gradient(circle at 70% 30%, rgba(255,255,255,0.25) 0, transparent 10%);
-}
+  <div class="window">
+    <div class="titlebar">
+      <span class="title">🎵 webplayer</span>
+      <div class="buttons">
+        <button class="win-btn min">–</button>
+        <button class="win-btn max">▢</button>
+        <button class="win-btn close">✕</button>
+      </div>
+    </div>
 
-/* Aero glass window */
-.window {
-  max-width: 720px;
-  margin: 60px auto;
-  border-radius: 10px 10px 8px 8px;
-  background: linear-gradient(
-    180deg,
-    rgba(255,255,255,0.55) 0%,
-    rgba(230,240,255,0.35) 40%,
-    rgba(255,255,255,0.45) 100%
-  );
-  backdrop-filter: blur(20px) saturate(160%);
-  -webkit-backdrop-filter: blur(20px) saturate(160%);
-  border: 1px solid rgba(255,255,255,0.7);
-  box-shadow:
-    0 20px 50px rgba(0, 40, 80, 0.35),
-    inset 0 1px 0 rgba(255,255,255,0.9),
-    inset 0 0 40px rgba(255,255,255,0.15);
-  overflow: hidden;
-}
+    <div class="content">
+      <div class="toolbar">
+        <input id="search" type="text" placeholder="Search songs...">
+        <button id="shuffle">🔀 Shuffle</button>
+      </div>
 
-/* Aero title bar */
-.titlebar {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 8px 12px;
-  background: linear-gradient(
-    180deg,
-    rgba(255,255,255,0.75) 0%,
-    rgba(220,235,255,0.4) 50%,
-    rgba(255,255,255,0.6) 100%
-  );
-  border-bottom: 1px solid rgba(255,255,255,0.7);
-  text-shadow: 0 1px 0 rgba(255,255,255,0.9);
-}
-.titlebar .title {
-  font-size: 14px;
-  font-weight: 600;
-  color: #0a3a63;
-}
-.titlebar .buttons {
-  display: flex;
-  gap: 4px;
-}
-.win-btn {
-  width: 30px;
-  height: 22px;
-  border: 1px solid rgba(0,0,0,0.15);
-  border-radius: 4px;
-  background: linear-gradient(
-    180deg,
-    rgba(255,255,255,0.85) 0%,
-    rgba(210,225,245,0.7) 50%,
-    rgba(255,255,255,0.75) 100%
-  );
-  color: #234;
-  font-size: 12px;
-  line-height: 1;
-  cursor: pointer;
-  box-shadow: inset 0 1px 0 #fff, 0 1px 1px rgba(0,0,0,0.1);
-  transition: all 0.15s;
-}
-.win-btn:hover { background: linear-gradient(180deg, #dff1ff 0%, #a8d4f5 100%); }
-.win-btn.close:hover { background: linear-gradient(180deg, #ff9c9c 0%, #d43a3a 100%); color: #fff; }
+      <div id="playlist" class="playlist"></div>
 
-/* Content area */
-.content {
-  padding: 16px 20px 20px;
-}
+      <div class="nowplaying">
+        <div class="np-main">
+          <div class="cover-wrap">
+            <div id="cover-big" class="cover cover-fallback">🎵</div>
+          </div>
 
-/* Toolbar */
-.toolbar {
-  display: flex;
-  gap: 8px;
-  margin-bottom: 14px;
-}
-.toolbar input,
-.toolbar button {
-  font-family: inherit;
-  font-size: 13px;
-  padding: 8px 12px;
-  border-radius: 6px;
-  border: 1px solid rgba(90,130,170,0.5);
-  background: linear-gradient(
-    180deg,
-    rgba(255,255,255,0.9) 0%,
-    rgba(240,248,255,0.7) 50%,
-    rgba(255,255,255,0.85) 100%
-  );
-  color: #123;
-  box-shadow:
-    inset 0 1px 0 #fff,
-    0 1px 2px rgba(0,40,80,0.15);
-  outline: none;
-  transition: all 0.15s;
-}
-.toolbar input { flex: 1; }
-.toolbar input:focus {
-  border-color: #4aa8e0;
-  box-shadow: inset 0 1px 0 #fff, 0 0 0 3px rgba(74,168,224,0.35);
-}
-.toolbar button {
-  cursor: pointer;
-  font-weight: 600;
-}
-.toolbar button:hover {
-  background: linear-gradient(180deg, #e6f4ff 0%, #b8dcf7 50%, #dff1ff 100%);
-}
-.toolbar button:active {
-  background: linear-gradient(180deg, #a8d4f5 0%, #cfe8fb 100%);
-  box-shadow: inset 0 2px 3px rgba(0,40,80,0.25);
-}
+          <div class="np-info">
+            <div id="np-title" class="np-title">Nothing playing</div>
+            <div id="np-artist" class="np-artist"></div>
 
-/* Playlist */
-.playlist {
-  max-height: 420px;
-  overflow-y: auto;
-  border-radius: 8px;
-  border: 1px solid rgba(255,255,255,0.7);
-  background: linear-gradient(
-    180deg,
-    rgba(255,255,255,0.5) 0%,
-    rgba(245,250,255,0.35) 100%
-  );
-  box-shadow: inset 0 1px 4px rgba(0,40,80,0.1);
-  padding: 6px;
-}
-.song {
-  padding: 10px 12px;
-  border-radius: 5px;
-  font-size: 14px;
-  cursor: pointer;
-  color: #143;
-  border: 1px solid transparent;
-  transition: all 0.12s;
-}
-.song:hover {
-  background: linear-gradient(
-    180deg,
-    rgba(255,255,255,0.95) 0%,
-    rgba(214,236,255,0.85) 100%
-  );
-  border-color: rgba(120,180,230,0.6);
-  box-shadow: inset 0 1px 0 #fff, 0 1px 2px rgba(0,40,80,0.1);
-}
-.song.playing {
-  background: linear-gradient(
-    180deg,
-    #d3ecff 0%,
-    #a4d2f6 100%
-  );
-  border-color: #4aa8e0;
-  color: #063a63;
-  font-weight: 600;
-  box-shadow:
-    inset 0 1px 0 rgba(255,255,255,0.9),
-    0 0 0 1px rgba(74,168,224,0.4),
-    0 1px 3px rgba(0,80,140,0.25);
-}
-.song.playing::before { content: "▶ "; }
+            <div class="progress-row">
+              <span id="time-current" class="time">0:00</span>
+              <div id="progress" class="progress">
+                <div id="progress-fill" class="progress-fill"></div>
+              </div>
+              <span id="time-total" class="time">0:00</span>
+            </div>
 
-/* Scrollbar (webkit) */
-.playlist::-webkit-scrollbar { width: 10px; }
-.playlist::-webkit-scrollbar-track { background: rgba(255,255,255,0.3); border-radius: 5px; }
-.playlist::-webkit-scrollbar-thumb {
-  background: linear-gradient(180deg, #cfe8fb, #7fc0ea);
-  border-radius: 5px;
-  border: 1px solid rgba(255,255,255,0.6);
-}
+            <div class="controls">
+              <button id="prev" class="ctrl-btn" title="Previous">⏮</button>
+              <button id="playpause" class="ctrl-btn play" title="Play / Pause">▶</button>
+              <button id="next" class="ctrl-btn" title="Next">⏭</button>
+              <button id="stop" class="ctrl-btn" title="Stop">⏹</button>
+              <div class="volume-group">
+                <span class="vol-icon" id="vol-icon">🔊</span>
+                <input id="volume" type="range" min="0" max="1" step="0.01" value="1">
+              </div>
+            </div>
+          </div>
+        </div>
 
-/* Now playing bar */
-.nowplaying {
-  margin-top: 14px;
-  padding: 10px 12px;
-  border-radius: 8px;
-  background: linear-gradient(
-    180deg,
-    rgba(255,255,255,0.6) 0%,
-    rgba(225,240,255,0.45) 100%
-  );
-  border: 1px solid rgba(255,255,255,0.75);
-  box-shadow: inset 0 1px 0 #fff, 0 1px 3px rgba(0,40,80,0.15);
-}
-.np-title {
-  font-size: 13px;
-  font-weight: 600;
-  color: #0a3a63;
-  margin-bottom: 8px;
-  text-shadow: 0 1px 0 rgba(255,255,255,0.9);
-  min-height: 18px;
-}
-audio {
-  width: 100%;
-  border-radius: 6px;
-  outline: none;
-  filter: drop-shadow(0 1px 2px rgba(0,40,80,0.15));
-}
+        <audio id="player"></audio>
+      </div>
+    </div>
+  </div>
 
-/* Mobile */
-@media (max-width: 760px) {
-  .window { margin: 20px 12px; }
-  .toolbar { flex-direction: column; }
-  .toolbar input { width: 100%; }
-}
+  <script>
+    /* ---------- Auto-generate 18 songs ---------- */
+    const songs = Array.from({ length: 18 }, (_, i) => ({
+      title: `Song ${i + 1}`,
+      artist: '',
+      file: `song${i + 1}.mp3`
+    }));
+
+    let queue = [...songs];
+    let currentIndex = -1;
+
+    const playlist    = document.getElementById('playlist');
+    const player      = document.getElementById('player');
+    const search      = document.getElementById('search');
+    const npTitle     = document.getElementById('np-title');
+    const npArtist    = document.getElementById('np-artist');
+    const coverBig    = document.getElementById('cover-big');
+    const playPauseBtn= document.getElementById('playpause');
+    const prevBtn     = document.getElementById('prev');
+    const nextBtn     = document.getElementById('next');
+    const stopBtn     = document.getElementById('stop');
+    const progress    = document.getElementById('progress');
+    const progressFill= document.getElementById('progress-fill');
+    const timeCurrent = document.getElementById('time-current');
+    const timeTotal   = document.getElementById('time-total');
+    const volume      = document.getElementById('volume');
+    const volIcon     = document.getElementById('vol-icon');
+
+    /* ---------- Deterministic gradient from a string ---------- */
+    function hashString(str) {
+      let h = 0;
+      for (let i = 0; i < str.length; i++) {
+        h = (h * 31 + str.charCodeAt(i)) | 0;
+      }
+      return Math.abs(h);
+    }
+
+    function gradientFor(title) {
+      const h = hashString(title);
+      // hue 0-360, plus a second hue offset 60-180 degrees for variety
+      const hue1 = h % 360;
+      const hue2 = (hue1 + 60 + (h >> 3) % 120) % 360;
+      const sat1 = 65 + (h % 20);          // 65-85%
+      const sat2 = 55 + ((h >> 5) % 25);   // 55-80%
+      const light1 = 55 + ((h >> 7) % 15);// 55-70%
+      const light2 = 35 + ((h >> 9) % 20);// 35-55%
+      return `linear-gradient(135deg,
+        hsl(${hue1}, ${sat1}%, ${light1}%) 0%,
+        hsl(${hue2}, ${sat2}%, ${light2}%) 100%)`;
+    }
+
+    function applyGradient(el, title) {
+      el.style.background = gradientFor(title);
+      el.textContent = title.match(/\d+/)?.[0] || '🎵';
+    }
+
+    /* ---------- Rendering ---------- */
+    function render(list) {
+      playlist.innerHTML = '';
+      list.forEach(song => {
+        const row = document.createElement('div');
+        row.className = 'song';
+
+        const cover = document.createElement('div');
+        cover.className = 'song-cover';
+        applyGradient(cover, song.title);
+
+        const meta = document.createElement('div');
+        meta.className = 'song-meta';
+        meta.innerHTML = `<div class="song-title">${song.title}</div>
+                          <div class="song-artist">${song.artist || ''}</div>`;
+
+        row.appendChild(cover);
+        row.appendChild(meta);
+        row.onclick = () => play(song);
+        playlist.appendChild(row);
+      });
+      highlightCurrent();
+    }
+
+    function highlightCurrent() {
+      const current = queue[currentIndex];
+      document.querySelectorAll('.song').forEach(d => {
+        const t = d.querySelector('.song-title')?.textContent;
+        d.classList.toggle('playing', current && t === current.title);
+      });
+    }
+
+    /* ---------- Playback ---------- */
+    function play(song) {
+      const idx = queue.findIndex(s => s.file === song.file);
+      if (idx === -1) return;
+      currentIndex = idx;
+      player.src = song.file;
+      player.play();
+      npTitle.textContent = song.title;
+      npArtist.textContent = song.artist || '';
+      applyGradient(coverBig, song.title);
+      highlightCurrent();
+    }
+
+    function playByIndex(i) { if (i >= 0 && i < queue.length) play(queue[i]); }
+    function togglePlayPause() {
+      if (!player.src) { if (queue.length) playByIndex(0); return; }
+      player.paused ? player.play() : player.pause();
+    }
+    function stop() {
+      player.pause(); player.currentTime = 0;
+      progressFill.style.width = '0%';
+      timeCurrent.textContent = '0:00';
+    }
+
+    playPauseBtn.onclick = togglePlayPause;
+    prevBtn.onclick = () => {
+      if (player.currentTime > 3) { player.currentTime = 0; return; }
+      playByIndex(currentIndex - 1);
+    };
+    nextBtn.onclick = () => playByIndex(currentIndex + 1);
+    stopBtn.onclick = stop;
+
+    player.addEventListener('ended', () => playByIndex(currentIndex + 1));
+    player.addEventListener('play',  () => playPauseBtn.textContent = '⏸');
+    player.addEventListener('pause', () => playPauseBtn.textContent = '▶');
+    player.addEventListener('play', () => localStorage.setItem('lastSong', player.src.split('/').pop()));
+
+    /* ---------- Progress ---------- */
+    function fmt(s) {
+      if (!isFinite(s)) return '0:00';
+      const m = Math.floor(s / 60);
+      const ss = Math.floor(s % 60).toString().padStart(2, '0');
+      return `${m}:${ss}`;
+    }
+    player.addEventListener('timeupdate', () => {
+      if (!player.duration) return;
+      progressFill.style.width = (player.currentTime / player.duration * 100) + '%';
+      timeCurrent.textContent = fmt(player.currentTime);
+    });
+    player.addEventListener('loadedmetadata', () => timeTotal.textContent = fmt(player.duration));
+    progress.addEventListener('click', e => {
+      if (!player.duration) return;
+      const rect = progress.getBoundingClientRect();
+      player.currentTime = ((e.clientX - rect.left) / rect.width) * player.duration;
+    });
+
+    /* ---------- Volume ---------- */
+    volume.addEventListener('input', () => {
+      player.volume = volume.value;
+      localStorage.setItem('volume', volume.value);
+      updateVolIcon();
+    });
+    function updateVolIcon() {
+      const v = parseFloat(volume.value);
+      volIcon.textContent = v === 0 ? '🔇' : v < 0.5 ? '🔉' : '🔊';
+    }
+
+    /* ---------- Search ---------- */
+    search.oninput = () => {
+      const q = search.value.toLowerCase();
+      render(songs.filter(s => s.title.toLowerCase().includes(q)));
+    };
+
+    /* ---------- Shuffle ---------- */
+    document.getElementById('shuffle').onclick = () => {
+      queue = [...songs].sort(() => Math.random() - 0.5);
+      render(queue);
+      playByIndex(0);
+    };
+
+    /* ---------- Keyboard ---------- */
+    document.addEventListener('keydown', e => {
+      if (e.target.tagName === 'INPUT') return;
+      if (e.code === 'Space')      { e.preventDefault(); togglePlayPause(); }
+      if (e.code === 'ArrowRight') { playByIndex(currentIndex + 1); }
+      if (e.code === 'ArrowLeft')  { playByIndex(currentIndex - 1); }
+      if (e.code === 'ArrowUp')    { e.preventDefault(); volume.value = Math.min(1, +volume.value + 0.05); player.volume = volume.value; updateVolIcon(); }
+      if (e.code === 'ArrowDown')  { e.preventDefault(); volume.value = Math.max(0, +volume.value - 0.05); player.volume = volume.value; updateVolIcon(); }
+    });
+
+    /* ---------- Restore ---------- */
+    const savedVol = localStorage.getItem('volume');
+    if (savedVol !== null) { volume.value = savedVol; player.volume = savedVol; }
+    updateVolIcon();
+
+    const last = localStorage.getItem('lastSong');
+    if (last) {
+      const found = songs.find(s => s.file === last);
+      if (found) {
+        player.src = found.file;
+        npTitle.textContent = found.title;
+        npArtist.textContent = found.artist || '';
+        applyGradient(coverBig, found.title);
+      }
+    }
+
+    render(queue);
+  </script>
+</body>
+</html>
