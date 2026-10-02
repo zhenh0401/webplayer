@@ -65,12 +65,27 @@
   </div>
 
   <script>
-    /* ---------- Auto-generate 18 songs ---------- */
-    const songs = Array.from({ length: 18 }, (_, i) => ({
-      title: `Song ${i + 1}`,
-      artist: '',
-      file: `song${i + 1}.mp3`
-    }));
+    /* ---------- Songs ---------- */
+    const songs = [
+      { title: "Waltzing Flutes (Remastered)",               artist: "", file: "song1.mp3"  },
+      { title: "Convenience Store",                          artist: "", file: "song2.mp3"  },
+      { title: "School Crush",                               artist: "", file: "song3.mp3"  },
+      { title: "So Easy (To Fall In Love)",                  artist: "", file: "song4.mp3"  },
+      { title: "Run It Back",                                artist: "", file: "song5.mp3"  },
+      { title: "Gypsy Woman In Brazil",                      artist: "", file: "song6.mp3"  },
+      { title: "Has To Be (New Wave)",                       artist: "", file: "song7.mp3"  },
+      { title: "New Look",                                   artist: "", file: "song8.mp3"  },
+      { title: "Lotus Water Remake",                         artist: "", file: "song9.mp3"  },
+      { title: "Lease But Slightly Bitcrushed For Nostalgia",artist: "", file: "song10.mp3" },
+      { title: "Dating Start!",                              artist: "", file: "song11.mp3" },
+      { title: "Snowdin Town",                               artist: "", file: "song12.mp3" },
+      { title: "Lucy",                                       artist: "", file: "song13.mp3" },
+      { title: "NO SIGNAL",                                  artist: "", file: "song14.mp3" },
+      { title: "TICTAC",                                     artist: "", file: "song15.mp3" },
+      { title: "Brooklynbloodpop X Vacation Bible School",   artist: "", file: "song16.mp3" },
+      { title: "She Buggin X New Jeans",                     artist: "", file: "song17.mp3" },
+      { title: "Good Day Commander",                         artist: "", file: "song18.mp3" },
+    ];
 
     let queue = [...songs];
     let currentIndex = -1;
@@ -92,32 +107,51 @@
     const volume      = document.getElementById('volume');
     const volIcon     = document.getElementById('vol-icon');
 
-    /* ---------- Deterministic gradient from a string ---------- */
+    /* ---------- FNV-1a hash ---------- */
     function hashString(str) {
-      let h = 0;
+      let h = 2166136261;
       for (let i = 0; i < str.length; i++) {
-        h = (h * 31 + str.charCodeAt(i)) | 0;
+        h ^= str.charCodeAt(i);
+        h = Math.imul(h, 16777619);
       }
-      return Math.abs(h);
+      return h >>> 0;
     }
 
+    /* ---------- mulberry32 PRNG ---------- */
+    function seededRandoms(seed, count) {
+      const out = [];
+      let s = seed >>> 0;
+      for (let i = 0; i < count; i++) {
+        s = (s + 0x6D2B79F5) >>> 0;
+        let t = s;
+        t = Math.imul(t ^ (t >>> 15), 1 | t);
+        t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+        out.push(((t ^ (t >>> 14)) >>> 0) / 4294967296);
+      }
+      return out;
+    }
+
+    /* ---------- Full-wheel gradient per title ---------- */
     function gradientFor(title) {
-      const h = hashString(title);
-      // hue 0-360, plus a second hue offset 60-180 degrees for variety
-      const hue1 = h % 360;
-      const hue2 = (hue1 + 60 + (h >> 3) % 120) % 360;
-      const sat1 = 65 + (h % 20);          // 65-85%
-      const sat2 = 55 + ((h >> 5) % 25);   // 55-80%
-      const light1 = 55 + ((h >> 7) % 15);// 55-70%
-      const light2 = 35 + ((h >> 9) % 20);// 35-55%
+      const seed = hashString(title);
+      const [r1, r2, r3, r4, r5, r6] = seededRandoms(seed, 6);
+
+      const hue1 = Math.floor(r1 * 360);
+      const hue2 = (hue1 + 90 + Math.floor(r2 * 180)) % 360;
+
+      const sat1 = 65 + Math.floor(r3 * 25);
+      const sat2 = 55 + Math.floor(r4 * 30);
+      const light1 = 55 + Math.floor(r5 * 15);
+      const light2 = 30 + Math.floor(r6 * 25);
+
       return `linear-gradient(135deg,
         hsl(${hue1}, ${sat1}%, ${light1}%) 0%,
         hsl(${hue2}, ${sat2}%, ${light2}%) 100%)`;
     }
 
-    function applyGradient(el, title) {
+    function applyGradient(el, title, num) {
       el.style.background = gradientFor(title);
-      el.textContent = title.match(/\d+/)?.[0] || '🎵';
+      el.textContent = num !== undefined ? num : (title.match(/\d+/)?.[0] || '🎵');
     }
 
     /* ---------- Rendering ---------- */
@@ -129,7 +163,7 @@
 
         const cover = document.createElement('div');
         cover.className = 'song-cover';
-        applyGradient(cover, song.title);
+        applyGradient(cover, song.title, songs.indexOf(song) + 1);
 
         const meta = document.createElement('div');
         meta.className = 'song-meta';
@@ -156,13 +190,28 @@
     function play(song) {
       const idx = queue.findIndex(s => s.file === song.file);
       if (idx === -1) return;
+
       currentIndex = idx;
+
+      // Clean stop before swapping
+      player.pause();
+      player.removeAttribute('src');
+      player.load();
+
       player.src = song.file;
-      player.play();
+
       npTitle.textContent = song.title;
       npArtist.textContent = song.artist || '';
-      applyGradient(coverBig, song.title);
+      applyGradient(coverBig, song.title, songs.indexOf(song) + 1);
       highlightCurrent();
+
+      const attempt = player.play();
+      if (attempt && typeof attempt.catch === 'function') {
+        attempt.catch(err => {
+          console.warn('Playback blocked or failed:', err);
+          playPauseBtn.textContent = '▶';
+        });
+      }
     }
 
     function playByIndex(i) { if (i >= 0 && i < queue.length) play(queue[i]); }
@@ -184,7 +233,15 @@
     nextBtn.onclick = () => playByIndex(currentIndex + 1);
     stopBtn.onclick = stop;
 
-    player.addEventListener('ended', () => playByIndex(currentIndex + 1));
+    player.addEventListener('ended', () => {
+      if (currentIndex + 1 < queue.length) playByIndex(currentIndex + 1);
+    });
+
+    player.addEventListener('error', () => {
+      console.warn('Audio error on:', player.src);
+      playPauseBtn.textContent = '▶';
+    });
+
     player.addEventListener('play',  () => playPauseBtn.textContent = '⏸');
     player.addEventListener('pause', () => playPauseBtn.textContent = '▶');
     player.addEventListener('play', () => localStorage.setItem('lastSong', player.src.split('/').pop()));
@@ -222,7 +279,10 @@
     /* ---------- Search ---------- */
     search.oninput = () => {
       const q = search.value.toLowerCase();
-      render(songs.filter(s => s.title.toLowerCase().includes(q)));
+      render(songs.filter(s =>
+        s.title.toLowerCase().includes(q) ||
+        (s.artist || '').toLowerCase().includes(q)
+      ));
     };
 
     /* ---------- Shuffle ---------- */
@@ -254,7 +314,7 @@
         player.src = found.file;
         npTitle.textContent = found.title;
         npArtist.textContent = found.artist || '';
-        applyGradient(coverBig, found.title);
+        applyGradient(coverBig, found.title, songs.indexOf(found) + 1);
       }
     }
 
