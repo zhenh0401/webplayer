@@ -28,14 +28,6 @@
         <input id="file-input" type="file" accept="audio/*,.mp3,.wav,.ogg,.flac,.m4a,.aac,.opus,.webm" multiple hidden>
       </div>
 
-      <div id="dropzone" class="dropzone">
-        <div class="dropzone-inner">
-          <div class="dropzone-icon">📂</div>
-          <div class="dropzone-text">Drag & drop audio files here</div>
-          <div class="dropzone-sub">or click "Import" above · MP3 · WAV · OGG · FLAC · M4A · AAC · OPUS</div>
-        </div>
-      </div>
-
       <div id="playlist" class="playlist"></div>
 
       <div class="nowplaying">
@@ -118,7 +110,6 @@
     const volIcon     = document.getElementById('vol-icon');
     const importBtn   = document.getElementById('import-btn');
     const fileInput   = document.getElementById('file-input');
-    const dropzone    = document.getElementById('dropzone');
 
     /* ---------- FNV-1a hash ---------- */
     function hashString(str) {
@@ -332,30 +323,10 @@
       if (e.code === 'ArrowDown')  { e.preventDefault(); volume.value = Math.max(0, +volume.value - 0.05); player.volume = volume.value; updateVolIcon(); }
     });
 
-    /* ---------- IMPORT: click button ---------- */
+    /* ---------- IMPORT ---------- */
     importBtn.onclick = () => fileInput.click();
     fileInput.onchange = e => handleFiles(e.target.files);
 
-    /* ---------- IMPORT: drag & drop ---------- */
-    ['dragenter','dragover'].forEach(ev =>
-      dropzone.addEventListener(ev, e => {
-        e.preventDefault();
-        dropzone.classList.add('dragging');
-      })
-    );
-    ['dragleave','drop'].forEach(ev =>
-      dropzone.addEventListener(ev, e => {
-        e.preventDefault();
-        dropzone.classList.remove('dragging');
-      })
-    );
-    dropzone.addEventListener('drop', e => {
-      const files = e.dataTransfer?.files;
-      if (files && files.length) handleFiles(files);
-    });
-
-    /* ---------- Handle imported files ---------- */
-    let localCounter = 0;
     function handleFiles(fileList) {
       const files = [...fileList].filter(f =>
         f.type.startsWith('audio/') ||
@@ -364,7 +335,6 @@
       if (!files.length) { alert('No audio files found in that selection.'); return; }
 
       files.forEach(f => {
-        // Title = filename without extension
         const title = f.name.replace(/\.[^/.]+$/, '');
         const url = URL.createObjectURL(f);
         queue.push({
@@ -373,11 +343,9 @@
           file: url,
           local: true
         });
-        localCounter++;
       });
 
       render(queue);
-      // Auto-play the first newly added track
       playByIndex(queue.length - files.length);
     }
 
