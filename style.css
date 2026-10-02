@@ -79,45 +79,6 @@ html, body {
 .toolbar button:hover { background: linear-gradient(180deg, #e6f4ff 0%, #b8dcf7 50%, #dff1ff 100%); }
 .toolbar button:active { background: linear-gradient(180deg, #a8d4f5 0%, #cfe8fb 100%); box-shadow: inset 0 2px 3px rgba(0,40,80,0.25); }
 
-/* Dropzone */
-.dropzone {
-  margin-bottom: 14px;
-  border-radius: 8px;
-  padding: 14px;
-  text-align: center;
-  border: 2px dashed rgba(90,150,210,0.55);
-  background: linear-gradient(180deg, rgba(255,255,255,0.35) 0%, rgba(220,240,255,0.25) 100%);
-  transition: all 0.15s ease;
-  cursor: pointer;
-}
-.dropzone:hover {
-  border-color: rgba(74,168,224,0.85);
-  background: linear-gradient(180deg, rgba(255,255,255,0.5) 0%, rgba(210,235,255,0.4) 100%);
-}
-.dropzone.dragging {
-  border-color: #4aa8e0;
-  background: linear-gradient(180deg, rgba(220,240,255,0.7) 0%, rgba(180,220,250,0.55) 100%);
-  box-shadow: inset 0 0 0 3px rgba(74,168,224,0.25), 0 0 12px rgba(74,168,224,0.35);
-  transform: scale(1.01);
-}
-.dropzone-icon {
-  font-size: 24px;
-  margin-bottom: 4px;
-  filter: drop-shadow(0 1px 2px rgba(0,40,80,0.25));
-}
-.dropzone-text {
-  font-size: 13px;
-  font-weight: 600;
-  color: #0a3a63;
-  text-shadow: 0 1px 0 rgba(255,255,255,0.85);
-}
-.dropzone-sub {
-  font-size: 11px;
-  color: #4a6a88;
-  margin-top: 2px;
-  text-shadow: 0 1px 0 rgba(255,255,255,0.7);
-}
-
 /* Playlist */
 .playlist {
   max-height: 380px; overflow-y: auto;
