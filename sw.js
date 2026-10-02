@@ -1,4 +1,4 @@
-const CACHE_NAME = 'webplayer-v2';
+const CACHE_NAME = 'webplayer-v3';
 
 const ASSETS = [
   './',
@@ -28,16 +28,22 @@ const ASSETS = [
 
 self.addEventListener('install', event => {
   event.waitUntil(
-    caches.open(CACHE_NAME).then(cache => cache.addAll(ASSETS))
-      .then(() => self.skipWaiting())
+    caches.open(CACHE_NAME).then(cache => {
+      // Cache each file independently — one failure won't block the rest
+      return Promise.all(
+        ASSETS.map(url =>
+          cache.add(url).catch(err => console.warn('Skipped (failed to cache):', url, err))
+        )
+      );
+    }).then(() => self.skipWaiting())
   );
 });
 
 self.addEventListener('activate', event => {
   event.waitUntil(
-    caches.keys().then(keys =>
-      Promise.all(keys.filter(k => k !== CACHE_NAME).map(k => caches.delete(k)))
-    ).then(() => self.clients.claim())
+    caches.keys()
+      .then(keys => Promise.all(keys.filter(k => k !== CACHE_NAME).map(k => caches.delete(k))))
+      .then(() => self.clients.claim())
   );
 });
 
@@ -46,17 +52,15 @@ self.addEventListener('fetch', event => {
   event.respondWith(
     caches.match(event.request).then(cached => {
       if (cached) return cached;
-      return fetch(event.request)
-        .then(response => {
-          if (response.ok && response.type === 'basic') {
-            const copy = response.clone();
-            caches.open(CACHE_NAME).then(cache => cache.put(event.request, copy));
-          }
-          return response;
-        })
-        .catch(() => {
-          if (event.request.mode === 'navigate') return caches.match('./index.html');
-        });
+      return fetch(event.request).then(res => {
+        if (res.ok && res.type === 'basic') {
+          const copy = res.clone();
+          caches.open(CACHE_NAME).then(c => c.put(event.request, copy));
+        }
+        return res;
+      }).catch(() => {
+        if (event.request.mode === 'navigate') return caches.match('./index.html');
+      });
     })
   );
 });
