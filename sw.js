@@ -1,6 +1,6 @@
 /* ---------- Service Worker for offline playback ---------- */
 
-const CACHE_NAME = 'webplayer-v5';
+const CACHE_NAME = 'webplayer-v6';
 
 const ASSETS = [
   './',
@@ -28,27 +28,24 @@ const ASSETS = [
   './song18.mp3',
 ];
 
-/* ---------- INSTALL: cache everything ---------- */
+/* ---------- INSTALL: cache everything, one file at a time ---------- */
 self.addEventListener('install', event => {
   event.waitUntil(
-    caches.open(CACHE_NAME).then(cache =>
-      Promise.all(
-        ASSETS.map(async url => {
-          try {
-            // cache:'no-cache' avoids 206 partial responses
-            const res = await fetch(url, { cache: 'no-cache' });
-            if (res.status === 200) {
-              await cache.put(url, res);
-              console.log('✅ cached', url);
-            } else {
-              console.warn('⚠️ skipped', url, 'status', res.status);
-            }
-          } catch (e) {
-            console.warn('❌ failed', url, e.message);
+    caches.open(CACHE_NAME).then(async cache => {
+      for (const url of ASSETS) {
+        try {
+          const res = await fetch(url, { cache: 'no-cache' });
+          if (res.status === 200) {
+            await cache.put(url, res.clone());
+            console.log('✅ cached', url);
+          } else {
+            console.warn('⚠️ skipped', url, 'status', res.status);
           }
-        })
-      )
-    ).then(() => self.skipWaiting())
+        } catch (e) {
+          console.warn('❌ failed', url, e.message);
+        }
+      }
+    }).then(() => self.skipWaiting())
   );
 });
 
@@ -72,8 +69,7 @@ self.addEventListener('fetch', event => {
   // Only handle GET
   if (req.method !== 'GET') return;
 
-  // Let range requests (used by <audio> seeking / playback) hit the network directly.
-  // Intercepting these with a cached 200 response breaks Chrome's audio element.
+  // Let range requests (used by <audio> seeking) hit the network directly.
   if (req.headers.get('range')) return;
 
   event.respondWith(
@@ -82,7 +78,6 @@ self.addEventListener('fetch', event => {
 
       return fetch(req)
         .then(res => {
-          // Only cache full 200 responses — never 206 partials
           if (res.status === 200 && res.type === 'basic') {
             const copy = res.clone();
             caches.open(CACHE_NAME).then(c => c.put(req, copy));
@@ -90,7 +85,6 @@ self.addEventListener('fetch', event => {
           return res;
         })
         .catch(() => {
-          // Offline + navigating → serve cached index.html
           if (req.mode === 'navigate') return caches.match('./index.html');
         });
     })
