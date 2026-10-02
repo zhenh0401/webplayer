@@ -24,6 +24,16 @@
       <div class="toolbar">
         <input id="search" type="text" placeholder="Search songs...">
         <button id="shuffle">🔀 Shuffle</button>
+        <button id="import-btn">📂 Import</button>
+        <input id="file-input" type="file" accept="audio/*,.mp3,.wav,.ogg,.flac,.m4a,.aac,.opus,.webm" multiple hidden>
+      </div>
+
+      <div id="dropzone" class="dropzone">
+        <div class="dropzone-inner">
+          <div class="dropzone-icon">📂</div>
+          <div class="dropzone-text">Drag & drop audio files here</div>
+          <div class="dropzone-sub">or click "Import" above · MP3 · WAV · OGG · FLAC · M4A · AAC · OPUS</div>
+        </div>
       </div>
 
       <div id="playlist" class="playlist"></div>
@@ -65,7 +75,7 @@
   </div>
 
   <script>
-    /* ---------- Songs ---------- */
+    /* ---------- Built-in songs ---------- */
     const songs = [
       { title: "Waltzing Flutes (Remastered)",               artist: "", file: "song1.mp3"  },
       { title: "Convenience Store",                          artist: "", file: "song2.mp3"  },
@@ -106,6 +116,9 @@
     const timeTotal   = document.getElementById('time-total');
     const volume      = document.getElementById('volume');
     const volIcon     = document.getElementById('vol-icon');
+    const importBtn   = document.getElementById('import-btn');
+    const fileInput   = document.getElementById('file-input');
+    const dropzone    = document.getElementById('dropzone');
 
     /* ---------- FNV-1a hash ---------- */
     function hashString(str) {
@@ -149,9 +162,14 @@
         hsl(${hue2}, ${sat2}%, ${light2}%) 100%)`;
     }
 
-    function applyGradient(el, title, num) {
+    function applyGradient(el, title, label) {
       el.style.background = gradientFor(title);
-      el.textContent = num !== undefined ? num : (title.match(/\d+/)?.[0] || '🎵');
+      if (label !== undefined) {
+        el.textContent = label;
+      } else {
+        const n = title.match(/\d+/);
+        el.textContent = n ? n[0] : title.trim().charAt(0).toUpperCase() || '🎵';
+      }
     }
 
     /* ---------- Rendering ---------- */
@@ -163,12 +181,16 @@
 
         const cover = document.createElement('div');
         cover.className = 'song-cover';
-        applyGradient(cover, song.title, songs.indexOf(song) + 1);
+        if (song.local) {
+          applyGradient(cover, song.title);
+        } else {
+          applyGradient(cover, song.title, songs.indexOf(song) + 1);
+        }
 
         const meta = document.createElement('div');
         meta.className = 'song-meta';
-        meta.innerHTML = `<div class="song-title">${song.title}</div>
-                          <div class="song-artist">${song.artist || ''}</div>`;
+        meta.innerHTML = `<div class="song-title">${escapeHtml(song.title)}</div>
+                          <div class="song-artist">${escapeHtml(song.artist || '')}</div>`;
 
         row.appendChild(cover);
         row.appendChild(meta);
@@ -176,6 +198,12 @@
         playlist.appendChild(row);
       });
       highlightCurrent();
+    }
+
+    function escapeHtml(s) {
+      return String(s).replace(/[&<>"']/g, c => ({
+        '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'
+      }[c]));
     }
 
     function highlightCurrent() {
@@ -193,7 +221,6 @@
 
       currentIndex = idx;
 
-      // Clean stop before swapping
       player.pause();
       player.removeAttribute('src');
       player.load();
@@ -202,7 +229,11 @@
 
       npTitle.textContent = song.title;
       npArtist.textContent = song.artist || '';
-      applyGradient(coverBig, song.title, songs.indexOf(song) + 1);
+      if (song.local) {
+        applyGradient(coverBig, song.title);
+      } else {
+        applyGradient(coverBig, song.title, songs.indexOf(song) + 1);
+      }
       highlightCurrent();
 
       const attempt = player.play();
@@ -244,7 +275,6 @@
 
     player.addEventListener('play',  () => playPauseBtn.textContent = '⏸');
     player.addEventListener('pause', () => playPauseBtn.textContent = '▶');
-    player.addEventListener('play', () => localStorage.setItem('lastSong', player.src.split('/').pop()));
 
     /* ---------- Progress ---------- */
     function fmt(s) {
@@ -279,7 +309,7 @@
     /* ---------- Search ---------- */
     search.oninput = () => {
       const q = search.value.toLowerCase();
-      render(songs.filter(s =>
+      render(queue.filter(s =>
         s.title.toLowerCase().includes(q) ||
         (s.artist || '').toLowerCase().includes(q)
       ));
@@ -287,7 +317,7 @@
 
     /* ---------- Shuffle ---------- */
     document.getElementById('shuffle').onclick = () => {
-      queue = [...songs].sort(() => Math.random() - 0.5);
+      queue = [...queue].sort(() => Math.random() - 0.5);
       render(queue);
       playByIndex(0);
     };
@@ -302,21 +332,59 @@
       if (e.code === 'ArrowDown')  { e.preventDefault(); volume.value = Math.max(0, +volume.value - 0.05); player.volume = volume.value; updateVolIcon(); }
     });
 
-    /* ---------- Restore ---------- */
+    /* ---------- IMPORT: click button ---------- */
+    importBtn.onclick = () => fileInput.click();
+    fileInput.onchange = e => handleFiles(e.target.files);
+
+    /* ---------- IMPORT: drag & drop ---------- */
+    ['dragenter','dragover'].forEach(ev =>
+      dropzone.addEventListener(ev, e => {
+        e.preventDefault();
+        dropzone.classList.add('dragging');
+      })
+    );
+    ['dragleave','drop'].forEach(ev =>
+      dropzone.addEventListener(ev, e => {
+        e.preventDefault();
+        dropzone.classList.remove('dragging');
+      })
+    );
+    dropzone.addEventListener('drop', e => {
+      const files = e.dataTransfer?.files;
+      if (files && files.length) handleFiles(files);
+    });
+
+    /* ---------- Handle imported files ---------- */
+    let localCounter = 0;
+    function handleFiles(fileList) {
+      const files = [...fileList].filter(f =>
+        f.type.startsWith('audio/') ||
+        /\.(mp3|wav|ogg|oga|flac|m4a|aac|opus|webm)$/i.test(f.name)
+      );
+      if (!files.length) { alert('No audio files found in that selection.'); return; }
+
+      files.forEach(f => {
+        // Title = filename without extension
+        const title = f.name.replace(/\.[^/.]+$/, '');
+        const url = URL.createObjectURL(f);
+        queue.push({
+          title,
+          artist: '',
+          file: url,
+          local: true
+        });
+        localCounter++;
+      });
+
+      render(queue);
+      // Auto-play the first newly added track
+      playByIndex(queue.length - files.length);
+    }
+
+    /* ---------- Restore volume ---------- */
     const savedVol = localStorage.getItem('volume');
     if (savedVol !== null) { volume.value = savedVol; player.volume = savedVol; }
     updateVolIcon();
-
-    const last = localStorage.getItem('lastSong');
-    if (last) {
-      const found = songs.find(s => s.file === last);
-      if (found) {
-        player.src = found.file;
-        npTitle.textContent = found.title;
-        npArtist.textContent = found.artist || '';
-        applyGradient(coverBig, found.title, songs.indexOf(found) + 1);
-      }
-    }
 
     render(queue);
   </script>
