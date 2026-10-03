@@ -1,6 +1,6 @@
 /* ---------- Service Worker for offline playback ---------- */
 
-const CACHE_NAME = 'webplayer-v8';
+const CACHE_NAME = 'webplayer-v9';
 
 const ASSETS = [
   './',
@@ -34,12 +34,13 @@ self.addEventListener('install', event => {
     caches.open(CACHE_NAME).then(async cache => {
       for (const url of ASSETS) {
         try {
-          const res = await fetch(url, { cache: 'no-cache' });
+          const abs = new URL(url, self.location).href;
+          const res = await fetch(abs, { cache: 'no-cache' });
           if (res.status === 200) {
-            await cache.put(url, res.clone());
-            console.log('✅ cached', url);
+            await cache.put(abs, res.clone());
+            console.log('✅ cached', abs);
           } else {
-            console.warn('⚠️ skipped', url, 'status', res.status);
+            console.warn('⚠️ skipped', abs, 'status', res.status);
           }
         } catch (e) {
           console.warn('❌ failed', url, e.message);
@@ -71,30 +72,42 @@ self.addEventListener('fetch', event => {
 
 async function handleRequest(req) {
   const cache = await caches.open(CACHE_NAME);
-  const cached = await cache.match(req, { ignoreSearch: true });
 
-  // Not in cache → fetch and store
+  // Normalize: strip query string, use absolute URL
+  const url = new URL(req.url);
+  url.search = '';
+  const key = url.href;
+
+  let cached = await cache.match(key);
+  if (!cached) cached = await cache.match(req, { ignoreSearch: true });
+
+  // Not in cache → try network
   if (!cached) {
+    console.log('🌐 cache miss, fetching:', key);
     try {
       const res = await fetch(req);
       if (res.status === 200 && res.type === 'basic') {
-        cache.put(req, res.clone());
+        cache.put(key, res.clone());
       }
       return res;
     } catch (e) {
+      console.warn('💥 offline + not cached:', key);
       if (req.mode === 'navigate') {
-        const index = await cache.match('./index.html');
+        const index = await cache.match(new URL('./index.html', self.location).href);
         if (index) return index;
       }
-      return new Response('', { status: 504 });
+      return new Response('offline', { status: 504 });
     }
   }
 
-  // In cache — no Range → serve full response
+  // Cache hit — no Range → serve full
   const rangeHeader = req.headers.get('range');
-  if (!rangeHeader) return cached;
+  if (!rangeHeader) {
+    console.log('📦 from cache:', key);
+    return cached;
+  }
 
-  // Range requested → slice cached bytes and return 206
+  // Range requested → slice cached bytes
   const buf = await cached.arrayBuffer();
   const size = buf.byteLength;
 
