@@ -1,6 +1,6 @@
 /* ---------- Service Worker for offline playback ---------- */
 
-const CACHE_NAME = 'webplayer-v6';
+const CACHE_NAME = 'webplayer-v8';
 
 const ASSETS = [
   './',
@@ -28,7 +28,7 @@ const ASSETS = [
   './song18.mp3',
 ];
 
-/* ---------- INSTALL: cache everything, one file at a time ---------- */
+/* ---------- INSTALL: cache everything, one at a time ---------- */
 self.addEventListener('install', event => {
   event.waitUntil(
     caches.open(CACHE_NAME).then(async cache => {
@@ -62,31 +62,57 @@ self.addEventListener('activate', event => {
   );
 });
 
-/* ---------- FETCH: serve from cache, fall back to network ---------- */
+/* ---------- FETCH: serve from cache, handle Range requests ---------- */
 self.addEventListener('fetch', event => {
   const req = event.request;
-
-  // Only handle GET
   if (req.method !== 'GET') return;
-
-  // Let range requests (used by <audio> seeking) hit the network directly.
-  if (req.headers.get('range')) return;
-
-  event.respondWith(
-    caches.match(req, { ignoreSearch: true }).then(cached => {
-      if (cached) return cached;
-
-      return fetch(req)
-        .then(res => {
-          if (res.status === 200 && res.type === 'basic') {
-            const copy = res.clone();
-            caches.open(CACHE_NAME).then(c => c.put(req, copy));
-          }
-          return res;
-        })
-        .catch(() => {
-          if (req.mode === 'navigate') return caches.match('./index.html');
-        });
-    })
-  );
+  event.respondWith(handleRequest(req));
 });
+
+async function handleRequest(req) {
+  const cache = await caches.open(CACHE_NAME);
+  const cached = await cache.match(req, { ignoreSearch: true });
+
+  // Not in cache → fetch and store
+  if (!cached) {
+    try {
+      const res = await fetch(req);
+      if (res.status === 200 && res.type === 'basic') {
+        cache.put(req, res.clone());
+      }
+      return res;
+    } catch (e) {
+      if (req.mode === 'navigate') {
+        const index = await cache.match('./index.html');
+        if (index) return index;
+      }
+      return new Response('', { status: 504 });
+    }
+  }
+
+  // In cache — no Range → serve full response
+  const rangeHeader = req.headers.get('range');
+  if (!rangeHeader) return cached;
+
+  // Range requested → slice cached bytes and return 206
+  const buf = await cached.arrayBuffer();
+  const size = buf.byteLength;
+
+  const match = rangeHeader.match(/bytes=(\d+)-(\d*)/);
+  if (!match) return cached;
+
+  const start = parseInt(match[1], 10);
+  const end = match[2] ? parseInt(match[2], 10) : size - 1;
+  const chunk = buf.slice(start, end + 1);
+
+  return new Response(chunk, {
+    status: 206,
+    statusText: 'Partial Content',
+    headers: {
+      'Content-Type': cached.headers.get('content-type') || 'audio/mpeg',
+      'Content-Length': String(chunk.byteLength),
+      'Content-Range': `bytes ${start}-${end}/${size}`,
+      'Accept-Ranges': 'bytes',
+    },
+  });
+}
