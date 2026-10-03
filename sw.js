@@ -1,6 +1,6 @@
 /* ---------- Service Worker for offline playback ---------- */
 
-const CACHE_NAME = 'webplayer-v10';
+const CACHE_NAME = 'webplayer-v11';
 
 const ASSETS = [
   './',
@@ -78,13 +78,14 @@ self.addEventListener('fetch', event => {
 async function handleRequest(req) {
   const cache = await caches.open(CACHE_NAME);
 
-  // Normalize: strip query string, use absolute URL
+  // Normalize: strip query string
   const url = new URL(req.url);
   url.search = '';
   const key = url.href;
 
   let cached = await cache.match(key);
   if (!cached) cached = await cache.match(req, { ignoreSearch: true });
+  if (!cached) cached = await cache.match(key.replace(/\/$/, '/index.html'));
 
   // Not in cache → try network
   if (!cached) {
@@ -97,9 +98,18 @@ async function handleRequest(req) {
       return res;
     } catch (e) {
       console.warn('💥 offline + not cached:', key);
+
+      // Offline navigation → try every possible cached home page
       if (req.mode === 'navigate') {
-        const index = await cache.match(new URL('./index.html', self.location).href);
-        if (index) return index;
+        const candidates = [
+          new URL('./index.html', self.location).href,
+          new URL('./', self.location).href,
+          key,
+        ];
+        for (const c of candidates) {
+          const r = await cache.match(c);
+          if (r) return r;
+        }
       }
       return new Response('offline', { status: 504 });
     }
@@ -112,7 +122,7 @@ async function handleRequest(req) {
     return cached;
   }
 
-  // Range requested → slice cached bytes
+  // Range requested → slice cached bytes and return 206
   const buf = await cached.arrayBuffer();
   const size = buf.byteLength;
 
