@@ -241,8 +241,7 @@ audio { display: none; }
 
 /* Loop button */
 .ctrl-btn.loop { font-size: 18px; }
-.ctrl-btn.loop.loop-all::after,
-.ctrl-btn.loop.loop-one::after {
+.ctrl-btn.loop.loop-on::after {
   content: "";
   position: absolute;
   width: 6px; height: 6px;
