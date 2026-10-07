@@ -31,7 +31,7 @@ const ASSETS = [
   './song21.mp3',
   './song22.mp3',
   './song23.mp3',
-  './song24.mpe',
+  './song24.mp3',
 ];
 
 /* ---------- INSTALL: cache everything, one at a time ---------- */
