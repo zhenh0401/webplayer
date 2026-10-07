@@ -1,6 +1,6 @@
 /* ---------- Service Worker for offline playback ---------- */
 
-const CACHE_NAME = 'webplayer-v13';
+const CACHE_NAME = 'webplayer-v14';
 
 const ASSETS = [
   './',
