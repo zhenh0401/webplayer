@@ -2,12 +2,15 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="webplayer">
+  <meta name="theme-color" content="#4aa8e0">
   <title>webplayer</title>
   <link rel="manifest" href="manifest.json">
   <link rel="icon" type="image/svg+xml" href="icon.svg">
   <link rel="apple-touch-icon" href="icon.svg">
-  <meta name="theme-color" content="#4aa8e0">
   <link rel="stylesheet" href="style.css">
 </head>
 <body>
@@ -57,6 +60,7 @@
               <button id="playpause" class="ctrl-btn play" title="Play / Pause">▶</button>
               <button id="next" class="ctrl-btn" title="Next">⏭</button>
               <button id="stop" class="ctrl-btn" title="Stop">⏹</button>
+              <button id="loop" class="ctrl-btn loop" title="Loop">🔁</button>
               <div class="volume-group">
                 <span class="vol-icon" id="vol-icon">🔊</span>
                 <input id="volume" type="range" min="0" max="1" step="0.01" value="1">
@@ -71,7 +75,7 @@
   </div>
 
   <script>
-    /* ---------- Built-in songs ---------- */
+    /* ---------- Songs ---------- */
     const songs = [
       { title: "Waltzing Flutes (Remastered)",               artist: "", file: "song1.mp3"  },
       { title: "Convenience Store",                          artist: "", file: "song2.mp3"  },
@@ -80,6 +84,7 @@
       { title: "The Prom",                                   artist: "", file: "song21.mp3" },
       { title: "Danny",                                      artist: "", file: "song23.mp3" },
       { title: "School Crush",                               artist: "", file: "song3.mp3"  },
+      { title: "Deep Down (Never Dull's In My Mind Edit)",   artist: "", file: "song24.mp3" },
       { title: "So Easy (To Fall In Love)",                  artist: "", file: "song4.mp3"  },
       { title: "Run It Back",                                artist: "", file: "song5.mp3"  },
       { title: "Gypsy Woman In Brazil",                      artist: "", file: "song6.mp3"  },
@@ -100,6 +105,7 @@
 
     let queue = [...songs];
     let currentIndex = -1;
+    let loopMode = localStorage.getItem('loopMode') || 'off'; // 'off' | 'all' | 'one'
 
     const playlist    = document.getElementById('playlist');
     const player      = document.getElementById('player');
@@ -111,6 +117,7 @@
     const prevBtn     = document.getElementById('prev');
     const nextBtn     = document.getElementById('next');
     const stopBtn     = document.getElementById('stop');
+    const loopBtn     = document.getElementById('loop');
     const progress    = document.getElementById('progress');
     const progressFill= document.getElementById('progress-fill');
     const timeCurrent = document.getElementById('time-current');
@@ -144,19 +151,15 @@
       return out;
     }
 
-    /* ---------- Full-wheel gradient per title ---------- */
     function gradientFor(title) {
       const seed = hashString(title);
       const [r1, r2, r3, r4, r5, r6] = seededRandoms(seed, 6);
-
       const hue1 = Math.floor(r1 * 360);
       const hue2 = (hue1 + 90 + Math.floor(r2 * 180)) % 360;
-
       const sat1 = 65 + Math.floor(r3 * 25);
       const sat2 = 55 + Math.floor(r4 * 30);
       const light1 = 55 + Math.floor(r5 * 15);
       const light2 = 30 + Math.floor(r6 * 25);
-
       return `linear-gradient(135deg,
         hsl(${hue1}, ${sat1}%, ${light1}%) 0%,
         hsl(${hue2}, ${sat2}%, ${light2}%) 100%)`;
@@ -218,7 +221,6 @@
     function play(song) {
       const idx = queue.findIndex(s => s.file === song.file);
       if (idx === -1) return;
-
       currentIndex = idx;
 
       player.pause();
@@ -226,7 +228,6 @@
       player.load();
 
       player.src = song.file;
-
       npTitle.textContent = song.title;
       npArtist.textContent = song.artist || '';
       if (song.local) {
@@ -256,6 +257,32 @@
       timeCurrent.textContent = '0:00';
     }
 
+    /* ---------- Loop handling ---------- */
+    function cycleLoop() {
+      loopMode = loopMode === 'off' ? 'all' : loopMode === 'all' ? 'one' : 'off';
+      localStorage.setItem('loopMode', loopMode);
+      updateLoopUI();
+    }
+
+    function updateLoopUI() {
+      loopBtn.classList.remove('loop-all', 'loop-one');
+      if (loopMode === 'off') {
+        loopBtn.textContent = '🔁';
+        loopBtn.style.opacity = '0.5';
+        loopBtn.title = 'Loop: Off';
+      } else if (loopMode === 'all') {
+        loopBtn.textContent = '🔁';
+        loopBtn.style.opacity = '1';
+        loopBtn.title = 'Loop: All';
+        loopBtn.classList.add('loop-all');
+      } else {
+        loopBtn.textContent = '🔂';
+        loopBtn.style.opacity = '1';
+        loopBtn.title = 'Loop: One';
+        loopBtn.classList.add('loop-one');
+      }
+    }
+
     playPauseBtn.onclick = togglePlayPause;
     prevBtn.onclick = () => {
       if (player.currentTime > 3) { player.currentTime = 0; return; }
@@ -263,9 +290,20 @@
     };
     nextBtn.onclick = () => playByIndex(currentIndex + 1);
     stopBtn.onclick = stop;
+    loopBtn.onclick = cycleLoop;
 
     player.addEventListener('ended', () => {
-      if (currentIndex + 1 < queue.length) playByIndex(currentIndex + 1);
+      if (loopMode === 'one') {
+        // Replay same song
+        player.currentTime = 0;
+        player.play();
+        return;
+      }
+      if (currentIndex + 1 < queue.length) {
+        playByIndex(currentIndex + 1);
+      } else if (loopMode === 'all') {
+        playByIndex(0);
+      }
     });
 
     player.addEventListener('error', () => {
@@ -289,11 +327,17 @@
       timeCurrent.textContent = fmt(player.currentTime);
     });
     player.addEventListener('loadedmetadata', () => timeTotal.textContent = fmt(player.duration));
-    progress.addEventListener('click', e => {
+
+    function seekAt(clientX) {
       if (!player.duration) return;
       const rect = progress.getBoundingClientRect();
-      player.currentTime = ((e.clientX - rect.left) / rect.width) * player.duration;
-    });
+      const ratio = Math.max(0, Math.min(1, (clientX - rect.left) / rect.width));
+      player.currentTime = ratio * player.duration;
+    }
+    progress.addEventListener('click', e => seekAt(e.clientX));
+    progress.addEventListener('touchstart', e => {
+      if (e.touches[0]) { e.preventDefault(); seekAt(e.touches[0].clientX); }
+    }, { passive: false });
 
     /* ---------- Volume ---------- */
     volume.addEventListener('input', () => {
@@ -358,15 +402,15 @@
       playByIndex(queue.length - files.length);
     }
 
-    /* ---------- Restore volume ---------- */
+    /* ---------- Restore volume + loop ---------- */
     const savedVol = localStorage.getItem('volume');
     if (savedVol !== null) { volume.value = savedVol; player.volume = savedVol; }
     updateVolIcon();
+    updateLoopUI();
 
     render(queue);
   </script>
 
-  <!-- ---------- PWA Service Worker ---------- -->
   <script>
     if ('serviceWorker' in navigator) {
       window.addEventListener('load', () => {
