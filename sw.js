@@ -1,6 +1,6 @@
 /* ---------- Service Worker for offline playback ---------- */
 
-const CACHE_NAME = 'webplayer-v15';
+const CACHE_NAME = 'webplayer-v16';
 
 const ASSETS = [
   './',
@@ -34,6 +34,7 @@ const ASSETS = [
   './song24.mp3',
   './song25.mp3',
   './song26.mp3',
+  './song27.mp3',
 ];
 
 /* ---------- INSTALL: cache everything, one at a time ---------- */
