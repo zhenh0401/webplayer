@@ -35,6 +35,15 @@ const ASSETS = [
   './song25.mp3',
   './song26.mp3',
   './song27.mp3',
+  './song28.mp3',
+  './song29.mp3',
+  './song30.mp3',
+  './song31.mp3',
+  './song32.mp3',
+  './song33.mp3',
+  './song34.mp3',
+  './song35.mp3',
+  './song36.mp3',
 ];
 
 /* ---------- INSTALL: cache everything, one at a time ---------- */
